@@ -1,8 +1,8 @@
 import * as vscode from 'vscode'
 import * as NodePath from 'path'
-import { WebviewMessage, VditorOptions } from '../types'
+import { WebviewMessage, VditorOptions, LogMessage, LogLevel } from '../types'
 import { CONFIG_KEYS, ConfigManager } from '../config'
-import { debug, showError, getAssetsFolder } from '../utils'
+import { debug, info, warn, error, showError, getAssetsFolder } from '../utils'
 
 export class MessageHandler {
   constructor(
@@ -14,9 +14,16 @@ export class MessageHandler {
   ) {}
 
   async handleMessage(message: WebviewMessage): Promise<void> {
-    debug('msg from webview review', message, this.panel.active)
+    debug('Received message from webview', { 
+      command: message.command, 
+      active: this.panel.active,
+      messageKeys: Object.keys(message)
+    })
 
     switch (message.command) {
+      case 'log':
+        this.handleLogMessage(message as unknown as LogMessage)
+        break
       case 'ready':
         await this.handleReady()
         break
@@ -53,12 +60,23 @@ export class MessageHandler {
   }
 
   private async handleReady(): Promise<void> {
+    info('Webview ready, initializing editor')
     const config = ConfigManager.getEditorConfig()
     const savedOptions = this.context.globalState.get(CONFIG_KEYS.VDITOR_OPTIONS) as VditorOptions | undefined
     const options = {
       ...config,
       ...(savedOptions || {}),
     }
+
+    debug('Editor initialization configuration', { 
+      outlineSettings: {
+        showOutlineByDefault: options.showOutlineByDefault,
+        outlinePosition: options.outlinePosition,
+        outlineWidth: options.outlineWidth,
+        enableOutlineResize: options.enableOutlineResize
+      },
+      theme: vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ? 'dark' : 'light'
+    })
 
     this.panel.webview.postMessage({
       command: 'update',
@@ -134,7 +152,9 @@ export class MessageHandler {
   }
 
   private async handleUpdateOutlineWidth(message: WebviewMessage): Promise<void> {
+    info('Updating outline width', { width: message.width })
     await ConfigManager.updateConfig('outlineWidth', message.width!)
+    debug('Outline width updated successfully')
   }
 
   private async syncToEditor(content: string): Promise<void> {
@@ -156,5 +176,30 @@ export class MessageHandler {
 
   private getDocumentContent(): string {
     return this.document ? this.document.getText() : ''
+  }
+
+  private handleLogMessage(logMessage: LogMessage): void {
+    const { level, message, data, timestamp, source } = logMessage;
+    
+    // 构建日志前缀
+    const prefix = `[WebView] [${source}] [${timestamp}]`;
+    
+    // 根据日志级别记录
+    switch (level) {
+      case LogLevel.DEBUG:
+        debug(`${prefix} ${message}`, data);
+        break;
+      case LogLevel.INFO:
+        info(`${prefix} ${message}`, data);
+        break;
+      case LogLevel.WARN:
+        warn(`${prefix} ${message}`, data);
+        break;
+      case LogLevel.ERROR:
+        error(`${prefix} ${message}`, data);
+        break;
+      default:
+        debug(`${prefix} ${message}`, data);
+    }
   }
 }

@@ -1,5 +1,23 @@
 import * as vscode from 'vscode'
 
+// 日志级别枚举
+export enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3
+}
+
+// 日志消息接口
+export interface LogMessage {
+  command: 'log';
+  level: LogLevel;
+  message: string;
+  data?: any;
+  timestamp: string;
+  source: 'webview';
+}
+
 export interface VditorOptions {
   useVscodeThemeColor?: boolean
   showOutlineByDefault?: boolean

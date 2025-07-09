@@ -4,7 +4,7 @@
 import $ from 'jquery';
 require('jquery-confirm')(window, $);
 import 'jquery-confirm/css/jquery-confirm.css';
-import { VSCodeMessage } from '../types';
+import { VSCodeMessage, LogLevel, LogMessage } from '../types';
 
 /**
  * 创建确认对话框
@@ -30,6 +30,53 @@ export function confirm(msg: string, onOk: () => void): void {
       },
     },
   });
+}
+
+/**
+ * 发送日志消息到VSCode
+ * @param level 日志级别
+ * @param message 日志消息
+ * @param data 附加数据（可选）
+ */
+export function logToVSCode(level: LogLevel, message: string, data?: any): void {
+  const logMessage: LogMessage = {
+    command: 'log',
+    level,
+    message,
+    data,
+    timestamp: new Date().toISOString(),
+    source: 'webview'
+  };
+  
+  // 同时输出到浏览器控制台
+  const consoleMethod = level === LogLevel.ERROR ? console.error :
+                       level === LogLevel.WARN ? console.warn :
+                       level === LogLevel.INFO ? console.info :
+                       console.debug;
+                       
+  consoleMethod(`[Markdown Editor] ${message}`, data);
+  
+  // 发送到VSCode
+  sendMessageToVSCode(logMessage);
+}
+
+/**
+ * 便捷日志函数
+ */
+export function debugLog(message: string, data?: any): void {
+  logToVSCode(LogLevel.DEBUG, message, data);
+}
+
+export function infoLog(message: string, data?: any): void {
+  logToVSCode(LogLevel.INFO, message, data);
+}
+
+export function warnLog(message: string, data?: any): void {
+  logToVSCode(LogLevel.WARN, message, data);
+}
+
+export function errorLog(message: string, data?: any): void {
+  logToVSCode(LogLevel.ERROR, message, data);
 }
 
 /**

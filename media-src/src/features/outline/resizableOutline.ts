@@ -3,24 +3,41 @@
  * 实现可调整大小的大纲面板
  */
 import { EditorOptions } from '../../types';
-import { sendMessageToVSCode } from '../../utils/common';
+import { sendMessageToVSCode, debugLog, infoLog, warnLog, errorLog } from '../../utils/common';
 
 /**
  * 设置可调整大小的大纲面板
  * @param options 编辑器选项
  */
 export function setupResizableOutline(options?: EditorOptions): void {
-  if (!options) return;
+  infoLog('Setting up resizable outline', options);
+  
+  if (!options) {
+    warnLog('No options provided for outline setup');
+    return;
+  }
   
   // 获取配置选项
   const enableResize = options.enableOutlineResize !== false;
   const defaultWidth = options.outlineWidth || 200;
   const position = options.outlinePosition || 'left';
   
+  debugLog('Outline configuration', { 
+    enableResize, 
+    defaultWidth, 
+    position, 
+    showOutlineByDefault: options.showOutlineByDefault 
+  });
+  
   // 等待大纲元素加载
   setTimeout(() => {
     const outline = document.querySelector('.vditor-outline') as HTMLElement;
-    if (!outline) return;
+    if (!outline) {
+      errorLog('Outline element not found in DOM');
+      return;
+    }
+    
+    infoLog('Outline element found, applying styles');
     
     // 设置初始宽度和样式
     outline.style.width = `${defaultWidth}px`;
@@ -28,14 +45,22 @@ export function setupResizableOutline(options?: EditorOptions): void {
     outline.style.maxWidth = '500px';
     outline.style.position = 'relative';
     
-    if (!enableResize) return;
+    if (!enableResize) {
+      debugLog('Outline resize disabled');
+      return;
+    }
     
     // 创建调整大小的手柄
     const resizeHandle = createResizeHandle(position);
     outline.appendChild(resizeHandle);
+    debugLog('Resize handle added to outline');
     
     // 设置拖拽调整大小的功能
     setupResizeDragHandlers(outline, resizeHandle, position, options);
+    debugLog('Resize drag handlers configured');
+    
+    // 监听大纲内容变化
+    setupOutlineContentObserver(outline);
     
   }, 100);
 }
@@ -139,5 +164,52 @@ function setupResizeDragHandlers(
       command: 'update-outline-width',
       width: resetWidth
     });
+  });
+}
+
+/**
+ * 设置大纲内容变化观察器
+ * 监控大纲元素内容的变化，记录日志
+ * @param outlineElement 大纲元素
+ */
+function setupOutlineContentObserver(outlineElement: HTMLElement): void {
+  infoLog('Setting up outline content observer');
+  
+  // 创建MutationObserver以监控大纲内容变化
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'childList' || mutation.type === 'characterData') {
+        const headings = outlineElement.querySelectorAll('a[data-target-id]');
+        const headingData = Array.from(headings).map(h => ({
+          text: h.textContent,
+          targetId: h.getAttribute('data-target-id')
+        }));
+        
+        infoLog('Outline content changed', { 
+          headingsCount: headings.length,
+          mutationType: mutation.type,
+          headings: headingData.slice(0, 5) // 只发送前5个标题，避免日志过大
+        });
+      }
+    });
+  });
+  
+  // 配置观察选项
+  const config = { 
+    attributes: false, 
+    childList: true, 
+    subtree: true,
+    characterData: true 
+  };
+  
+  // 开始观察大纲内容变化
+  observer.observe(outlineElement, config);
+  debugLog('Outline content observer started');
+  
+  // 立即获取并记录当前大纲状态
+  const initialHeadings = outlineElement.querySelectorAll('a[data-target-id]');
+  infoLog('Initial outline state', { 
+    headingsCount: initialHeadings.length,
+    isVisible: window.getComputedStyle(outlineElement).display !== 'none'
   });
 }

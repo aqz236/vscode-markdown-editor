@@ -125,6 +125,12 @@
           "type": "boolean",
           "default": true,
           "description": "Enable manual resizing of the outline panel by dragging."
+        },
+        "markdown-editor.logLevel": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "debug",
+          "description": "日志级别设置，用于控制在输出面板中显示的日志详细程度"
         }
       }
     },

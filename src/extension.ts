@@ -2,15 +2,17 @@ import * as vscode from 'vscode'
 import { EditorPanel } from './editor/editorPanel'
 import { MarkdownEditorProvider } from './editor/markdownEditorProvider'
 import { CONFIG_KEYS } from './config'
-import { debug } from './utils'
+import { debug, info } from './utils'
 
 export function activate(context: vscode.ExtensionContext) {
+  info('Markdown Editor extension activated')
+  
   // 注册打开编辑器命令
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'markdown-editor.openEditor',
       (uri?: vscode.Uri, ...args) => {
-        debug('command', uri, args)
+        debug('Received command: openEditor', uri?.toString(), args)
         EditorPanel.createOrShow(context, uri)
       }
     )
@@ -21,7 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       'markdown-editor.openInSplit',
       (uri?: vscode.Uri, ...args) => {
-        debug('command openInSplit', uri, args)
+        debug('Received command: openInSplit', uri?.toString(), args)
         EditorPanel.createOrShow(context, uri, true)
       }
     )

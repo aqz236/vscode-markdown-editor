@@ -11,7 +11,7 @@ import { setupTableFeatures } from '../features/table/tableEditor';
 import { setupResizableOutline } from '../features/outline/resizableOutline';
 import { toolbar } from '../features/toolbar/toolbarConfig';
 import { createUploadConfig } from '../features/upload/uploadHandler';
-import { sendMessageToVSCode } from '../utils/common';
+import { sendMessageToVSCode, infoLog, debugLog, warnLog, errorLog } from '../utils/common';
 
 // 输入节流定时器
 let inputTimer: ReturnType<typeof setTimeout> | null = null;
@@ -85,11 +85,28 @@ export function initVditor(message: UpdateMessage): void {
       ...defaultOptions,
       after() {
         // 初始化后的设置
+        infoLog('Vditor initialization completed, setting up features');
         setupThemeHandler();
         setupToolbarClickHandler();
         setupTableFeatures();
         setupPanelHoverEffects();
+        
+        // 设置大纲
+        infoLog('Setting up outline', {
+          showOutlineByDefault: message.options?.showOutlineByDefault,
+          outlinePosition: message.options?.outlinePosition,
+          outlineWidth: message.options?.outlineWidth
+        });
         setupResizableOutline(message.options);
+        
+        // 记录编辑器模式和大纲状态
+        setTimeout(() => {
+          infoLog('Editor status after initialization', { 
+            hasOutline: !!document.querySelector('.vditor-outline'),
+            editorMode: window.vditor?.currentMode,
+            outlineVisible: !!document.querySelector('.vditor-outline:not([style*="display: none"])')
+          });
+        }, 200);
       },
       input() {
         // 处理输入事件，添加节流
@@ -98,6 +115,31 @@ export function initVditor(message: UpdateMessage): void {
         }
         
         inputTimer = setTimeout(() => {
+          // 记录输入变更和大纲状态
+          const outlineElement = document.querySelector('.vditor-outline');
+          const headings = outlineElement ? outlineElement.querySelectorAll('a[data-target-id]') : [];
+          
+          debugLog('Content changed, checking outline status', { 
+            hasOutline: !!outlineElement,
+            headingsCount: headings.length,
+            outlineVisible: outlineElement ? 
+              window.getComputedStyle(outlineElement).display !== 'none' : false,
+            contentLength: window.vditor.getValue().length,
+            headingElements: Array.from(window.vditor.vditor.wysiwyg?.element?.querySelectorAll('h1, h2, h3, h4, h5, h6') || []).length
+          });
+          
+          // 检查大纲是否存在并更新
+          if (outlineElement) {
+            infoLog('大纲更新状态', {
+              outlineHeadingCount: headings.length,
+              documentHeadingCount: Array.from(window.vditor.vditor.wysiwyg?.element?.querySelectorAll('h1, h2, h3, h4, h5, h6') || []).length,
+              // 获取大纲中的标题文本列表（限制数量）
+              outlineHeadings: Array.from(headings).slice(0, 3).map(h => h.textContent)
+            });
+          } else {
+            warnLog('No outline element found after content change');
+          }
+          
           sendMessageToVSCode({
             command: 'edit',
             content: window.vditor.getValue()

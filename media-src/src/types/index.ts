@@ -8,10 +8,28 @@ declare module '*.png';
 declare module '*.jpg';
 declare module '*.svg';
 
+// 日志级别枚举
+export enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3
+}
+
 // VSCode消息类型
 export interface VSCodeMessage {
   command: string;
   [key: string]: any;
+}
+
+// 日志消息类型
+export interface LogMessage extends VSCodeMessage {
+  command: 'log';
+  level: LogLevel;
+  message: string;
+  data?: any;
+  timestamp: string;
+  source: 'webview';
 }
 
 // 编辑器选项
